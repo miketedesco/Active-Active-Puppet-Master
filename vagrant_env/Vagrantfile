@@ -1,0 +1,41 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  # This section adds host information into /etc/host.
+  config.vm.provision :hosts do |provisioner|
+    provisioner.autoconfigure = false
+    provisioner.add_host '192.168.85.10', ['master1']
+    provisioner.add_host '192.168.85.11', ['master2']
+    provisioner.add_host '192.168.85.12', ['agent1']
+    provisioner.add_host '10.171.157.57', ['sbocblr1-brn1']
+  end
+   # Agents defined here.
+   file_to_disk = './tmp/large_disk.vdi'
+   puppetagents = [
+      { :name => :master1, :mac => "080027911111", :ip => '192.168.85.10', :cpus => 1, :ram => 512, :disk => file_to_disk },
+      { :name => :master2, :mac => "080027922222", :ip => '192.168.85.11', :cpus => 1, :ram => 512, },
+      { :name => :agent1, :mac => "080027933333", :ip => '192.168.85.12', :cpus => 1, :ram => 512, },
+   ]
+
+   # This stanze installs 2 puppet clients.
+   puppetagents.each do |opts|
+      config.vm.define opts[:name] do |config|
+         config.vm.provider :virtualbox do |vb|
+            #vb.customize ["modifyvm", :id, "--name", opts[:name] ] if opts[:name]
+            vb.customize ['modifyvm', :id, "--cpus", opts[:cpus] ] if opts[:cpus]
+            vb.customize ['modifyvm', :id, "--memory", opts[:ram] ] if opts[:ram]
+            vb.customize ['modifyvm', :id, "--macaddress2", opts[:mac] ] if opts[:mac]
+         end
+         # Provision off a lcoal file first.
+         # This is tto get the host to report to the puppet master initially.
+         #config.vm.provision "shell", path: "script.sh"
+         # config.vm.box should be in the hash as well.
+         config.vm.box = "CentOS-6.4"
+         #config.vm.hostname =   "%s.vcorp.ad.vrsn.com" % opts[:name].to_s
+         config.vm.hostname =   "%s" % opts[:name].to_s
+         config.vm.network :private_network, ip: opts[:ip]
+         #config.vm.network :private_network, type: :dhcp
+      end
+   end
+end
